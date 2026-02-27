@@ -2,6 +2,19 @@ const { readSheet, updateSheet } = require('../lib/sheets-client');
 const { scoreResume } = require('../lib/gemini-client');
 const { sendResultsEmail } = require('../lib/email-sender');
 
+// Extract candidate name from first non-empty line of resume text
+function extractCandidateName(resumeText) {
+  if (!resumeText) return 'Candidate';
+  const lines = resumeText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const firstLine = lines[0] || '';
+  // First line is usually the name if it's short (not a section header or paragraph)
+  if (firstLine.length > 0 && firstLine.length < 60) {
+    return firstLine;
+  }
+  // Fallback: take first 3 words
+  return firstLine.split(' ').slice(0, 3).join(' ') || 'Candidate';
+}
+
 module.exports = async (req, res) => {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -145,6 +158,7 @@ module.exports = async (req, res) => {
         },
         top_5: results.slice(0, 5).map(r => ({
           rank: r.rank,
+          candidate_name: extractCandidateName(r.resume),
           score: r.score,
           recommendation: r.recommendation
         }))
