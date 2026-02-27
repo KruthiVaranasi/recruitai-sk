@@ -2,48 +2,14 @@ const { readSheet, updateSheet } = require('../lib/sheets-client');
 const { scoreResume } = require('../lib/gemini-client');
 const { sendResultsEmail } = require('../lib/email-sender');
 
-// Extract candidate name from resume text using multiple strategies, filename as last fallback
-function extractCandidateName(resumeText, filename) {
-  if (!resumeText) return filename || 'Unknown Candidate';
+// Extract candidate identifier: email from resume, filename as fallback
+function extractCandidateIdentifier(resumeText, filename) {
+  // Primary: extract email address from resume text
+  const emailMatch = resumeText && resumeText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  if (emailMatch) return emailMatch[0];
 
-  const lines = resumeText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-
-  // Strategy 1: First line looks like a name (2-4 words, no digits, no @ symbol)
-  const firstLine = lines[0] || '';
-  const words = firstLine.split(/\s+/);
-  const looksLikeName = words.length >= 2 && words.length <= 5
-    && !firstLine.includes('@')
-    && !/\d/.test(firstLine)
-    && firstLine.length < 50;
-  if (looksLikeName) return firstLine;
-
-  // Strategy 2: Scan first 10 lines for a line that looks like a name
-  for (const line of lines.slice(0, 10)) {
-    const w = line.split(/\s+/);
-    if (w.length >= 2 && w.length <= 4
-      && !line.includes('@')
-      && !/\d/.test(line)
-      && line.length < 40
-      && /^[A-Z]/.test(line)) {
-      return line;
-    }
-  }
-
-  // Strategy 3: Extract name from email (john.smith@gmail.com → John Smith)
-  const emailMatch = resumeText.match(/([a-zA-Z]+)[._]([a-zA-Z]+)@/);
-  if (emailMatch) {
-    const first = emailMatch[1].charAt(0).toUpperCase() + emailMatch[1].slice(1);
-    const last = emailMatch[2].charAt(0).toUpperCase() + emailMatch[2].slice(1);
-    return `${first} ${last}`;
-  }
-
-  // Strategy 4: Use first 3 words of first line
-  if (firstLine.length > 0) {
-    return firstLine.split(' ').slice(0, 3).join(' ');
-  }
-
-  // Final fallback: filename (e.g. john_smith_resume.pdf)
-  return filename || 'Unknown Candidate';
+  // Fallback: filename (e.g. john_smith_resume.pdf)
+  return filename || 'Unknown';
 }
 
 module.exports = async (req, res) => {
@@ -192,7 +158,7 @@ module.exports = async (req, res) => {
         },
         top_5: results.slice(0, 5).map(r => ({
           rank: r.rank,
-          candidate_name: extractCandidateName(r.resume, r.filename),
+          candidate_name: extractCandidateIdentifier(r.resume, r.filename),
           score: r.score,
           recommendation: r.recommendation
         }))
