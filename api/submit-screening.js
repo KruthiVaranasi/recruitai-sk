@@ -133,6 +133,8 @@ module.exports = async (req, res) => {
         // Continue with other resumes even if one fails
         results.push({
           row_number: row.row_number,
+          resume: row.resume || '',
+          filename: row.filename || '',
           score: 0,
           recommendation: 'Error',
           justification: `Failed to score: ${error.message}`
