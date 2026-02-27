@@ -2,9 +2,9 @@ const { readSheet, updateSheet } = require('../lib/sheets-client');
 const { scoreResume } = require('../lib/gemini-client');
 const { sendResultsEmail } = require('../lib/email-sender');
 
-// Extract candidate name from resume text using multiple strategies
-function extractCandidateName(resumeText) {
-  if (!resumeText) return 'Unknown Candidate';
+// Extract candidate name from resume text using multiple strategies, filename as last fallback
+function extractCandidateName(resumeText, filename) {
+  if (!resumeText) return filename || 'Unknown Candidate';
 
   const lines = resumeText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
@@ -37,12 +37,13 @@ function extractCandidateName(resumeText) {
     return `${first} ${last}`;
   }
 
-  // Strategy 4: Use first 3 words of first line as last resort
+  // Strategy 4: Use first 3 words of first line
   if (firstLine.length > 0) {
     return firstLine.split(' ').slice(0, 3).join(' ');
   }
 
-  return 'Unknown Candidate';
+  // Final fallback: filename (e.g. john_smith_resume.pdf)
+  return filename || 'Unknown Candidate';
 }
 
 module.exports = async (req, res) => {
@@ -117,6 +118,7 @@ module.exports = async (req, res) => {
           row_number: row.row_number,
           jd: row.jd,
           resume: row.resume,
+          filename: row.filename || '',
           jd_clarification: JSON.stringify(hrAnswers),
           score: scoring.match_score || 0,
           strengths: JSON.stringify(scoring.strengths || []),
@@ -188,7 +190,7 @@ module.exports = async (req, res) => {
         },
         top_5: results.slice(0, 5).map(r => ({
           rank: r.rank,
-          candidate_name: extractCandidateName(r.resume),
+          candidate_name: extractCandidateName(r.resume, r.filename),
           score: r.score,
           recommendation: r.recommendation
         }))

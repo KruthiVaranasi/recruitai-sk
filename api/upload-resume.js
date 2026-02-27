@@ -88,11 +88,12 @@ module.exports = async (req, res) => {
     // Add resume and JD to Google Sheets (NO question generation here)
     console.log('Adding to Google Sheets...');
     await appendToSheet(role, [
-      jd,              // Column A: jd
-      cleanedResume,   // Column B: resume
+      jd,                       // Column A: jd
+      cleanedResume,            // Column B: resume
       new Date().toISOString(), // Column C: uploadedAt
-      role             // Column D: role
-      // Column E (jd_clarifications) will be added in generate-questions endpoint
+      role,                     // Column D: role
+      '', '', '', '', '', '', '', '', '', // E–M: filled later by screening
+      filename                  // Column N: filename
     ]);
 
     // Return success
